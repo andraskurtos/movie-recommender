@@ -5,11 +5,23 @@ import { Link } from 'react-router-dom';
 const Navbar = () => { 
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    
-    const SubmitSearch = (e: React.FormEvent) => {
+    const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+
+    const SubmitSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         console.log("Search submitted:", searchQuery);
         // Implement search functionality here
+        if (!searchQuery.trim()) return;
+        try {
+          const response = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(searchQuery)}`);
+          if (!response.ok) {
+            throw new Error('Failed to find movies');
+          }
+          const data = await response.json();
+          console.log(data.results);
+        } catch (error) {
+          console.error('Error searching movies:', error);
+        }
     }
     
     return (
