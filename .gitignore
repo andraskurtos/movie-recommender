@@ -33,3 +33,7 @@ backend/obj
 *.sln
 *.sw?
 
+
+model/__pycache__
+model/ml-latest-small
+recommender_env
