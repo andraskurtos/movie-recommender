@@ -1,26 +1,72 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import SearchDropdown from './SearchDropdown';
+import { movieService } from '../services/MovieService';
 
 
 const Navbar = () => { 
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const API_URL = import.meta.env.VITE_API_URL;
+    const [showDropdown, setShowDropdown] = useState(false);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
+    
+    // Handle clicks outside the search container
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    const handleSearchInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setSearchQuery(value);
+        setShowDropdown(value.trim().length > 0);
+    };
 
     const SubmitSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         console.log("Search submitted:", searchQuery);
-        // Implement search functionality here
         if (!searchQuery.trim()) return;
+
         try {
-          const response = await fetch(`${API_URL}/api/Movies/search?query=${searchQuery}`);
-          if (!response.ok) {
-            throw new Error('Failed to find movies');
-          }
-          const data = await response.json();
-          console.log(data);
+            // First try to find the movie in the local database
+            const localMovies = await movieService.searchLocalMovies(searchQuery);
+            let movie = localMovies && localMovies[0];
+            
+            // If not found locally, search from TMDB and save it
+            if (!movie) {
+                console.log('Searching from remote API');
+                const remoteMovie = await SearchFromRemoteApi(searchQuery);
+                if (remoteMovie) {
+                    movie = remoteMovie;
+                }
+            }
+            
+            // Navigate to the movie page if we found a movie
+            if (movie && movie.id) {
+                navigate(`/movie/${movie.id}`);
+            } else {
+                console.log('No movie found for search:', searchQuery);
+            }
         } catch (error) {
-          console.error('Error searching movies:', error);
+            console.error('Error searching movies:', error);
+        }
+    }
+
+    const SearchFromRemoteApi = async (query: string) => {
+        try {
+            return await movieService.findAndSaveMovie(query);
+        } catch (error) {
+            console.error('Error searching movies from remote API:', error);
+            return null;
         }
     }
     
@@ -29,11 +75,25 @@ const Navbar = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="Title text-2xl font-bold flex-shrink-0">MovieRatr</div>
-            <div className="SearchBar text-gray-800">
+            <div className="SearchBar text-gray-800 relative" ref={searchContainerRef}>
                 <form onSubmit={(e) => SubmitSearch(e)} className="flex">
-                    <input type="text" placeholder="Search..." className="px-4 py-2 rounded-l-md" onChange={(e) => setSearchQuery(e.target.value)}/>
+                    <input 
+                        type="text" 
+                        placeholder="Search..." 
+                        className="px-4 py-2 rounded-l-md" 
+                        onChange={handleSearchInput}
+                        value={searchQuery}
+                        onFocus={() => {
+                            if (searchQuery.trim().length > 0) {
+                                setShowDropdown(true);
+                            }
+                        }}
+                    />
                     <button type="submit" className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-r-md">Search</button>
+                        
                 </form>
+                
+                <SearchDropdown isVisible={showDropdown} searchQuery={searchQuery} />
             </div>
             <div className="Links hidden md:flex space-x-6 items-center">
               <Link to="/" className="hover:text-yellow-400 transition">

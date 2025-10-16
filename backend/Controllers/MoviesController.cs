@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using backend.Data;
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
+using backend.Dtos;
+using System.Text.RegularExpressions;
 
 namespace backend.Controllers
 {
@@ -10,33 +12,97 @@ namespace backend.Controllers
     public class MoviesController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private static readonly HashSet<string> Stopwords = new HashSet<string>
+        {
+            "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", 
+            "if", "in", "into", "is", "it", "no", "not", "of", "on", "or", 
+            "such", "that", "the", "their", "then", "there", "these", "they", 
+            "this", "to", "was", "will", "with"
+        };
 
         public MoviesController(AppDbContext context)
         {
             _context = context;
         }
+        
+        private string RemoveStopwords(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+                
+            // Split the text into words
+            var words = Regex.Split(text.ToLower(), @"\W+")
+                             .Where(word => !string.IsNullOrWhiteSpace(word))
+                             .ToList();
+                             
+            // If query is only stopwords, return the original text
+            if (words.All(word => Stopwords.Contains(word)))
+                return text;
+                
+            // Remove stopwords and join the remaining words
+            var filteredWords = words.Where(word => !Stopwords.Contains(word)).ToList();
+            return string.Join(" ", filteredWords);
+        }
 
         [HttpGet]
         public async Task<ActionResult<List<Movie>>> GetMovies()
         {
-            return Ok(await _context.Movies.ToListAsync());
+            return Ok(await _context.Movies.OrderBy(m => m.Title).ToListAsync());
         }
 
         [HttpGet("search")]
         public async Task<ActionResult<List<Movie>>> SearchMovies(string query)
         {
-            var movies = await _context.Movies
+            // First try with original query
+            var normalizedQuery = query.ToLower().Trim();
+            
+            // Remove stopwords for improved matching (if original query has more than just stopwords)
+            var cleanedQuery = RemoveStopwords(normalizedQuery);
+            
+            // Use original query if it was only stopwords, otherwise use the cleaned version
+            var searchQuery = string.IsNullOrWhiteSpace(cleanedQuery) ? normalizedQuery : cleanedQuery;
+            
+            // First, get potential matches from the database
+            var potentialMatches = await _context.Movies
                 .Where(m =>
-                    EF.Functions.TrigramsWordSimilarity(m.Title, query) > 0.1 ||
-                    EF.Functions.TrigramsSimilarity(m.Title, query) > 0.15 ||
-                    EF.Functions.ILike(m.Title, $"%{query}%"))
-                .OrderByDescending(m =>
-                    EF.Functions.TrigramsWordSimilarity(m.Title, query) +
-                    EF.Functions.TrigramsSimilarity(m.Title, query) * 0.7)
-                .Take(30)
+                    // Match against both the original title and title with stopwords removed
+                    EF.Functions.TrigramsWordSimilarity(m.Title, searchQuery) > 0.3 ||
+                    EF.Functions.TrigramsSimilarity(m.Title, searchQuery) > 0.3 ||
+                    EF.Functions.ILike(m.Title, $"%{searchQuery}%") ||
+                    // Also search by full query if the cleaned query is different
+                    (searchQuery != normalizedQuery && 
+                    (EF.Functions.TrigramsWordSimilarity(m.Title, normalizedQuery) > 0.6 ||
+                     EF.Functions.ILike(m.Title, $"%{normalizedQuery}%"))))
                 .ToListAsync();
-            return Ok(movies);
+                
+            if (potentialMatches.Count == 0) return Ok(new List<Movie>());
+            
+            // Now, process the results in memory to apply more advanced filtering
+            var rankedMovies = potentialMatches
+                .Select(m => new 
+                {
+                    Movie = m,
+                    // Get a clean version of the movie title for comparison
+                    CleanTitle = RemoveStopwords(m.Title.ToLower()),
+                    // Calculate various match scores
+                    ExactCleanMatch = RemoveStopwords(m.Title.ToLower()) == searchQuery ? 1000 : 0,
+                    ExactOriginalMatch = m.Title.ToLower() == normalizedQuery ? 800 : 0,
+                    StartsWithMatch = m.Title.ToLower().StartsWith(searchQuery) ? 500 : 0,
+                    SimilarityScore = 
+                        (m.Title.ToLower().Contains(searchQuery) ? 300 : 0) +
+                        (searchQuery != normalizedQuery && m.Title.ToLower().Contains(normalizedQuery) ? 150 : 0)
+                })
+                .OrderByDescending(item => item.ExactCleanMatch)
+                .ThenByDescending(item => item.ExactOriginalMatch)
+                .ThenByDescending(item => item.StartsWithMatch)
+                .ThenByDescending(item => item.SimilarityScore)
+                .Take(30)
+                .Select(item => item.Movie)
+                .ToList();
+                
+            return Ok(rankedMovies);
         }
+
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Movie>> GetMovie(int id)
@@ -47,11 +113,62 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Movie>> CreateMovie(Movie movie)
+        public async Task<ActionResult<Movie>> CreateMovie(MovieCreateDto movieDto)
         {
-            _context.Movies.Add(movie);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetMovie), new { id = movie.Id }, movie);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // Check if a similar movie already exists in the database
+            var existingMovie = await _context.Movies
+                .Where(m => 
+                    // Match exact title and year
+                    (EF.Functions.ILike(m.Title, movieDto.Title) && m.Year == movieDto.Year) ||
+                    // Or very similar title with same year and same poster URL (highly likely to be the same movie)
+                    (EF.Functions.TrigramsWordSimilarity(m.Title, movieDto.Title) > 0.8 && 
+                     m.Year == movieDto.Year && 
+                     !string.IsNullOrEmpty(m.PosterUrl) && 
+                     !string.IsNullOrEmpty(movieDto.PosterUrl) &&
+                     m.PosterUrl == movieDto.PosterUrl)
+                )
+                .FirstOrDefaultAsync();
+
+            // If a similar movie exists, return that instead of creating a duplicate
+            if (existingMovie != null)
+            {
+                Console.WriteLine($"Duplicate movie detected: '{movieDto.Title}' ({movieDto.Year}). Using existing movie with ID: {existingMovie.Id}");
+                // Return HTTP 200 OK with the existing movie and a custom header
+                Response.Headers.Add("X-Movie-Status", "Existing");
+                return Ok(existingMovie);
+            }
+
+            var genres = await _context.Genres
+                .Where(g => movieDto.Genres.Contains(g.Id))
+                .ToListAsync();
+
+            var movie = new Movie
+            {
+                Title = movieDto.Title,
+                Year = movieDto.Year,
+                BackdropUrl = movieDto.BackdropUrl,
+                PosterUrl = movieDto.PosterUrl,
+                OriginalLanguage = movieDto.OriginalLanguage,
+                Overview = movieDto.Overview,
+                Genres = genres
+            };
+
+            try
+            {
+                _context.Movies.Add(movie);
+                await _context.SaveChangesAsync();
+                return CreatedAtAction(nameof(GetMovie), new { id = movie.Id }, movie);
+            }
+            catch (Exception ex)
+            {
+                // Return a 500 with the exception message to help debugging during development
+                return Problem(detail: ex.Message, statusCode: 500);
+            }
         }
 
         [HttpDelete("{id}")]
