@@ -17,10 +17,10 @@ dist-ssr
 
 #backend stuff
 backend/bin
-backend/obj
 backend/Properties
 backend/appsettings.json
 backend/appsettings.Development.json
+backend/obj
 
 # Editor directories and files
 .vscode/*
