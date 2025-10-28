@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import SearchDropdown from './SearchDropdown';
 import { movieService } from '../services/MovieService';
+import { useUser } from '../hooks/useUser';
 
 
 const Navbar = () => { 
@@ -10,6 +11,7 @@ const Navbar = () => {
     const [showDropdown, setShowDropdown] = useState(false);
     const searchContainerRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
+    const { user, logout } = useUser();
     
     // handle clicks outside the search container
     useEffect(() => {
@@ -109,6 +111,21 @@ const Navbar = () => {
               <Link to="/profile" className="hover:text-yellow-400 transition">
                 My Profile
               </Link>
+              {user ? (
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate('/');
+                  }}
+                  className="hover:text-yellow-400 transition"
+                >
+                  Log Out
+                </button>
+              ) : (
+                <Link to="/login" className="hover:text-yellow-400 transition">
+                  Log In
+                </Link>
+              )}
             </div>
 
             <div className="md:hidden">
@@ -143,9 +160,29 @@ const Navbar = () => {
             <Link
               to="/profile"
               className="block px-3 py-2 rounded-md hover:bg-gray-700"
-            >
+              >
               My Profile
             </Link>
+            <span>
+                {user ? (
+                  <button
+                    onClick={() => {
+                      logout();
+                      navigate('/');
+                    }}
+                    className="block px-3 py-2 rounded-md hover:bg-gray-700 w-full text-left"
+                  >
+                    Log Out
+                  </button>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="block px-3 py-2 rounded-md hover:bg-gray-700"
+                  >
+                    Log In
+                  </Link>
+                )}
+            </span>
           </div>
         </div>
       </nav>

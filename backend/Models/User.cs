@@ -21,8 +21,12 @@ namespace backend.Models
         [StringLength(255)]
         public string? DisplayName { get; set; }
 
-        [StringLength(500)]
+        [StringLength(255)]
         public string? ProfilePictureUrl { get; set; }
+
+        [Required]
+        [StringLength(255)]
+        public string PasswordHash { get; set; } = "";
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
