@@ -24,11 +24,9 @@ const MovieCard = ({ movie }: MovieCardProps) => {
             const overflow = titleWidth > containerWidth;
             setIsOverflowing(overflow);
             
-            // Calculate duration based on overflow amount
-            // Base duration is 6s, add time proportionally to overflow
+            // calculate duration based on overflow amount
             if (overflow) {
                 const overflowAmount = titleWidth - containerWidth;
-                // ~0.02s per pixel of overflow for consistent speed
                 const duration = 6 + (overflowAmount * 0.02);
                 setAnimationDuration(duration);
             }

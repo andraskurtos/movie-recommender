@@ -77,7 +77,7 @@ const MoviePage = () => {
                 <button className="text-2xl font-bold text-white">Movie Cast</button>
             </div>
             <div className="flex shrink-0 flex-row justify-top overflow-y-hidden overflow-x-scroll scrollbar-none gap-4 bg-gray-900 h-1/3 w-full">
-                <MovieCard movie={{posterUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/cm8TNGBGG0aBfWj0LgrESHv8tir.jpg", title: "Fantasztikus Faszos", year: 2025}} />
+                <MovieCard movie={{posterUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/cm8TNGBGG0aBfWj0LgrESHv8tir.jpg", title: "The Fantastic 4: First Steps", year: 2025}} />
             </div>
         </div>
       </div>

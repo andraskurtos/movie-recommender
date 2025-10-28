@@ -7,7 +7,6 @@ import ProfilePage from "./pages/ProfilePage";
 import MoviePage from "./pages/MoviePage";
 import PageTransition from "./components/PageTransition";
 
-// This component must be inside Router to use useLocation
 const AnimatedRoutes = () => {
   const location = useLocation();
   

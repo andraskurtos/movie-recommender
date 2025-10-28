@@ -53,23 +53,21 @@ namespace backend.Controllers
         [HttpGet("search")]
         public async Task<ActionResult<List<Movie>>> SearchMovies(string query)
         {
-            // First try with original query
             var normalizedQuery = query.ToLower().Trim();
             
             // Remove stopwords for improved matching (if original query has more than just stopwords)
             var cleanedQuery = RemoveStopwords(normalizedQuery);
             
-            // Use original query if it was only stopwords, otherwise use the cleaned version
             var searchQuery = string.IsNullOrWhiteSpace(cleanedQuery) ? normalizedQuery : cleanedQuery;
             
-            // First, get potential matches from the database
+            // get potential matches from the database
             var potentialMatches = await _context.Movies
                 .Where(m =>
-                    // Match against both the original title and title with stopwords removed
+                    // match against both the original title and title with stopwords removed
                     EF.Functions.TrigramsWordSimilarity(m.Title, searchQuery) > 0.3 ||
                     EF.Functions.TrigramsSimilarity(m.Title, searchQuery) > 0.3 ||
                     EF.Functions.ILike(m.Title, $"%{searchQuery}%") ||
-                    // Also search by full query if the cleaned query is different
+                    // also search by full query if the cleaned query is different
                     (searchQuery != normalizedQuery && 
                     (EF.Functions.TrigramsWordSimilarity(m.Title, normalizedQuery) > 0.6 ||
                      EF.Functions.ILike(m.Title, $"%{normalizedQuery}%"))))
@@ -77,7 +75,7 @@ namespace backend.Controllers
                 
             if (potentialMatches.Count == 0) return Ok(new List<Movie>());
             
-            // Now, process the results in memory to apply more advanced filtering
+            // process the results in memory to apply more advanced filtering
             var rankedMovies = potentialMatches
                 .Select(m => new 
                 {
@@ -85,15 +83,15 @@ namespace backend.Controllers
                     // Get a clean version of the movie title for comparison
                     CleanTitle = RemoveStopwords(m.Title.ToLower()),
                     // Calculate various match scores
-                    ExactCleanMatch = RemoveStopwords(m.Title.ToLower()) == searchQuery ? 1000 : 0,
-                    ExactOriginalMatch = m.Title.ToLower() == normalizedQuery ? 800 : 0,
+                    ExactOriginalMatch = m.Title.ToLower() == normalizedQuery ? 1000 : 0,
+                    ExactCleanMatch = RemoveStopwords(m.Title.ToLower()) == searchQuery ? 800 : 0,
                     StartsWithMatch = m.Title.ToLower().StartsWith(searchQuery) ? 500 : 0,
                     SimilarityScore = 
                         (m.Title.ToLower().Contains(searchQuery) ? 300 : 0) +
                         (searchQuery != normalizedQuery && m.Title.ToLower().Contains(normalizedQuery) ? 150 : 0)
                 })
-                .OrderByDescending(item => item.ExactCleanMatch)
-                .ThenByDescending(item => item.ExactOriginalMatch)
+                .OrderByDescending(item => item.ExactOriginalMatch)
+                .ThenByDescending(item => item.ExactCleanMatch)
                 .ThenByDescending(item => item.StartsWithMatch)
                 .ThenByDescending(item => item.SimilarityScore)
                 .Take(30)

@@ -9,12 +9,18 @@ interface SearchMovieCardProps {
         year: number;
         isTmdb?: boolean;
     };
+    onItemClick?: () => void;
 }
 
-const SearchMovieCard = ({ movie } : SearchMovieCardProps ) => {
+const SearchMovieCard = ({ movie, onItemClick } : SearchMovieCardProps ) => {
     const navigate = useNavigate();
     
     const handleClick = () => {
+        // Hide the dropdown when clicked
+        if (onItemClick) {
+            onItemClick();
+        }
+        
         if (movie.isTmdb) {
             movieService.getMovieDetails(movie.id!).then(tmdbMovie => {
                 const payload = movieService.convertTmdbToPayload(tmdbMovie!);

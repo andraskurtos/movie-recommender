@@ -11,7 +11,7 @@ const Navbar = () => {
     const searchContainerRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     
-    // Handle clicks outside the search container
+    // handle clicks outside the search container
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -37,11 +37,11 @@ const Navbar = () => {
         if (!searchQuery.trim()) return;
 
         try {
-            // First try to find the movie in the local database
+            // try to find the movie in the local database
             const localMovies = await movieService.searchLocalMovies(searchQuery);
             let movie = localMovies && localMovies[0];
             
-            // If not found locally, search from TMDB and save it
+            // if not found locally, search from TMDB and save
             if (!movie) {
                 console.log('Searching from remote API');
                 const remoteMovie = await SearchFromRemoteApi(searchQuery);
@@ -50,7 +50,7 @@ const Navbar = () => {
                 }
             }
             
-            // Navigate to the movie page if we found a movie
+            // navigate to the movie page if we found a movie
             if (movie && movie.id) {
                 navigate(`/movie/${movie.id}`);
             } else {
@@ -93,7 +93,11 @@ const Navbar = () => {
                         
                 </form>
                 
-                <SearchDropdown isVisible={showDropdown} searchQuery={searchQuery} />
+                <SearchDropdown 
+                    isVisible={showDropdown} 
+                    searchQuery={searchQuery} 
+                    onItemClick={() => setShowDropdown(false)}
+                />
             </div>
             <div className="Links hidden md:flex space-x-6 items-center">
               <Link to="/" className="hover:text-yellow-400 transition">

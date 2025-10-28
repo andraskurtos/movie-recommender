@@ -15,6 +15,7 @@ dist-ssr
 *.caches
 .env
 
+recommender_env
 #backend stuff
 backend/bin
 backend/Properties
@@ -36,4 +37,5 @@ backend/obj
 
 model/__pycache__
 model/ml-latest-small
+model/ml-latest
 recommender_env
