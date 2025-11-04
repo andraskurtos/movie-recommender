@@ -32,6 +32,16 @@ export interface Movie {
     originalLanguage?: string;
 }
 
+export interface PaginatedResponse<T> {
+    data: T[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+}
+
 class MovieService {
     private apiUrl: string;
     private tmdbApiKey: string;
@@ -62,6 +72,27 @@ class MovieService {
         } catch (error) {
             console.error('Error searching local movies:', error);
             return [];
+        }
+    }
+
+    /**
+     * Get paginated movies from the local database
+     */
+    async getPaginatedMovies(page: number = 1, pageSize: number = 100): Promise<PaginatedResponse<Movie>> {
+        try {
+            const url = `${this.apiUrl}/api/Movies/paginated?page=${page}&pageSize=${pageSize}`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch paginated movies: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log(`Fetched page ${page}:`, data);
+            return data;
+        } catch (error) {
+            console.error('Error fetching paginated movies:', error);
+            throw error;
         }
     }
 

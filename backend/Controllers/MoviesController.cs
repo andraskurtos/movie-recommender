@@ -50,6 +50,46 @@ namespace backend.Controllers
             return Ok(await _context.Movies.OrderBy(m => m.Title).ToListAsync());
         }
 
+        [HttpGet("paginated")]
+        public async Task<ActionResult<PaginatedResponseDto<MovieResponseDto>>> GetMoviesPaginated(int page = 1, int pageSize = 100)
+        {
+            // Validate pagination parameters
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 100;
+            if (pageSize > 500) pageSize = 500; // Cap max page size
+
+            var query = _context.Movies.OrderBy(m => m.Title);
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+            var movies = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(m => new MovieResponseDto
+                {
+                    Id = m.Id,
+                    Title = m.Title,
+                    Year = m.Year,
+                    BackdropUrl = m.BackdropUrl,
+                    PosterUrl = m.PosterUrl,
+                    OriginalLanguage = m.OriginalLanguage,
+                    Overview = m.Overview,
+                    Genres = m.Genres.Select(g => g.Id).ToList()
+                })
+                .ToListAsync();
+
+            var response = new PaginatedResponseDto<MovieResponseDto>
+            {
+                Data = movies,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages
+            };
+
+            return Ok(response);
+        }
+
         [HttpGet("search")]
         public async Task<ActionResult<List<Movie>>> SearchMovies(string query)
         {
@@ -111,7 +151,7 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Movie>> CreateMovie(MovieCreateDto movieDto)
+        public async Task<ActionResult<MovieResponseDto>> CreateMovie(MovieCreateDto movieDto)
         {
             if (!ModelState.IsValid)
             {
@@ -120,6 +160,7 @@ namespace backend.Controllers
 
             // Check if a similar movie already exists in the database
             var existingMovie = await _context.Movies
+                .Include(m => m.Genres)
                 .Where(m => 
                     // Match exact title and year
                     (EF.Functions.ILike(m.Title, movieDto.Title) && m.Year == movieDto.Year) ||
@@ -137,8 +178,19 @@ namespace backend.Controllers
             {
                 Console.WriteLine($"Duplicate movie detected: '{movieDto.Title}' ({movieDto.Year}). Using existing movie with ID: {existingMovie.Id}");
                 // Return HTTP 200 OK with the existing movie and a custom header
-                Response.Headers.Add("X-Movie-Status", "Existing");
-                return Ok(existingMovie);
+                Response.Headers.Append("X-Movie-Status", "Existing");
+                var existingMovieDto = new MovieResponseDto
+                {
+                    Id = existingMovie.Id,
+                    Title = existingMovie.Title,
+                    Year = existingMovie.Year,
+                    BackdropUrl = existingMovie.BackdropUrl,
+                    PosterUrl = existingMovie.PosterUrl,
+                    OriginalLanguage = existingMovie.OriginalLanguage,
+                    Overview = existingMovie.Overview,
+                    Genres = existingMovie.Genres.Select(g => g.Id).ToList()
+                };
+                return Ok(existingMovieDto);
             }
 
             var genres = await _context.Genres
@@ -160,7 +212,20 @@ namespace backend.Controllers
             {
                 _context.Movies.Add(movie);
                 await _context.SaveChangesAsync();
-                return CreatedAtAction(nameof(GetMovie), new { id = movie.Id }, movie);
+                
+                var movieResponseDto = new MovieResponseDto
+                {
+                    Id = movie.Id,
+                    Title = movie.Title,
+                    Year = movie.Year,
+                    BackdropUrl = movie.BackdropUrl,
+                    PosterUrl = movie.PosterUrl,
+                    OriginalLanguage = movie.OriginalLanguage,
+                    Overview = movie.Overview,
+                    Genres = movie.Genres.Select(g => g.Id).ToList()
+                };
+                
+                return CreatedAtAction(nameof(GetMovie), new { id = movie.Id }, movieResponseDto);
             }
             catch (Exception ex)
             {

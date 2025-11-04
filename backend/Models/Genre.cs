@@ -13,6 +13,8 @@ namespace backend.Models
         [MaxLength(100)]
         public string Name { get; set; } = "";
 
+        public int TmdbId { get; set; }
+
         public ICollection<Movie> Movies { get; set; } = new List<Movie>();
     }
 }
