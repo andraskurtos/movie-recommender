@@ -10,7 +10,7 @@ namespace backend.Models
         public int Id { get; set; }
 
         [Required]
-        [Range(1, 5, ErrorMessage = "Rating must be between 1 and 5")]
+        [Range(1, 10, ErrorMessage = "Rating must be between 1 and 10")]
         public int Rating { get; set; }
 
         public string? Review { get; set; }

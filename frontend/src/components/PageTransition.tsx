@@ -3,37 +3,21 @@ import type { ReactNode } from 'react';
 
 interface PageTransitionProps {
   children: ReactNode;
+  duration?: number;
 }
 
-const PageTransition = ({ children }: PageTransitionProps) => {
-  // Animation variants
-  const pageVariants = {
-    initial: {
-      opacity: 0,
-      y: 10
-    },
-    in: {
-      opacity: 1,
-      y: 0
-    },
-    out: {
-      opacity: 0,
-      y: -10
-    }
-  };
-
+const PageTransition = ({ children, duration = 0.15 }: PageTransitionProps) => {
   const pageTransition = {
     type: "tween" as const,
     ease: "easeInOut" as const,
-    duration: 0.15
+    duration: duration,
   };
 
   return (
     <motion.div
-      initial="initial"
-      animate="in"
-      exit="out"
-      variants={pageVariants}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
       transition={pageTransition}
     >
       {children}

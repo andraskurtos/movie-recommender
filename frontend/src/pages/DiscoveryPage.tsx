@@ -74,6 +74,13 @@ function DiscoveryPage() {
         loadMovies(1);
     }, [loadMovies]);
 
+    // Load suggestions when tab changes to suggestions
+    useEffect(() => {
+        if (activeTab === 'suggestions' && suggestions.length === 0 && !suggestionsLoading) {
+            loadSuggestions();
+        }
+    }, [activeTab, suggestions.length, suggestionsLoading, loadSuggestions]);
+
     // Infinite scroll observer
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -98,8 +105,34 @@ function DiscoveryPage() {
         };
     }, [hasMore, loadingMore, loading, currentPage, loadMovies]);
 
+    // Skeleton Loader Component
+    const SkeletonMovieCard = () => (
+        <div className="MovieCard max-w-[16rem] max-h-[27rem] bg-gray-700 bg-opacity-50 rounded-xl overflow-hidden shadow-lg p-4 shrink-0 flex flex-col items-center animate-pulse group">
+            <div className="w-[220px] h-[330px] bg-gray-600 rounded-lg object-cover"></div>
+            <div className="w-full overflow-hidden mt-3">
+                <div className="w-full h-6 bg-gray-600 rounded mb-2"></div>
+            </div>
+            <div className="h-6 bg-gray-600 rounded w-12"></div>
+        </div>
+    );
+
     if (loading) {
-        return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Loading...</div>;
+        return (
+            <div className="DiscoveryPage min-h-screen bg-gray-900 pt-6">
+                <div className="sectionBar w-full flex justify-center items-center">
+                    <button className="text-2xl font-bold underline text-white mr-2">
+                        All Movies
+                    </button>
+                    <p className="text-2xl text-gray-500">|</p>
+                    <button className="text-2xl text-gray-400 ml-2">Suggestions</button>
+                </div>
+                <div className="flex flex-wrap flex-row justify-center gap-6 p-6">
+                    {[...Array(24)].map((_, i) => (
+                        <SkeletonMovieCard key={i} />
+                    ))}
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -133,27 +166,25 @@ function DiscoveryPage() {
         {activeTab === 'suggestions' && (
           <div className="flex items-center justify-center min-h-[60vh]">
             {suggestionsLoading ? (
-              <div className="text-white text-xl">Loading personalized recommendations...</div>
+              <div className="flex flex-wrap flex-row justify-center gap-6 p-6 w-full">
+                {[...Array(24)].map((_, i) => (
+                    <SkeletonMovieCard key={i} />
+                ))}
+              </div>
             ) : suggestions.length > 0 ? (
               <div className="flex flex-wrap flex-row justify-center gap-6 p-6 w-full">
                 {suggestions.map((rec: Recommendation) => (
                   <div key={rec.movie.id} className="relative">
                     <MovieCard movie={rec.movie} />
                     <div className="absolute top-2 right-2 bg-yellow-500 text-black px-2 py-1 rounded text-sm font-bold">
-                      {(rec.predictedRating * 2).toFixed(0)}/10
+                      {(rec.predictedRating).toFixed(0)}/10
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center">
-                <p className="text-gray-400 text-xl mb-4">No recommendations yet</p>
-                <button 
-                  onClick={() => loadSuggestions()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold"
-                >
-                  Get Recommendations
-                </button>
+                <p className="text-gray-400 text-xl mb-4">No recommendations available</p>
               </div>
             )}
           </div>

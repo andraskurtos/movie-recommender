@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface MovieCardProps {
   movie: {
@@ -33,30 +33,27 @@ const MovieCard = ({ movie }: MovieCardProps) => {
     }
   }, [movie.title]);
 
-  const handleClick = () => {
-    if (movie.id) {
-      navigate(`/movie/${movie.id}`);
-    }
-  };
   return (
-    <div onClick={handleClick} className="MovieCard max-w-[16rem] max-h-[27rem] bg-gray-700 bg-opacity-50 rounded-xl overflow-hidden shadow-lg p-4 shrink-0 flex flex-col items-center hover:scale-105 transform transition duration-300 group cursor-pointer">
-      <img className="w-max h-max object-cover rounded-lg" src={`https://media.themoviedb.org/t/p/w600_and_h900_bestv2/${movie.posterUrl}`} alt="Movie Poster" />
-      <div ref={containerRef} className="w-full overflow-hidden mt-3">
-        <h2
-          ref={titleRef}
-          className={`text-lg font-semibold text-white whitespace-nowrap inline-block ${isOverflowing
-            ? 'text-left group-hover:animate-marquee-bounce'
-            : 'text-center w-full'
-            }`}
-          style={isOverflowing ? {
-            animationDuration: `${animationDuration}s`
-          } : {}}
-        >
-          {movie.title}
-        </h2>
+    <Link to={movie.id ? `/movie/${movie.id}` : '#'}>
+      <div className="MovieCard max-w-[16rem] max-h-[27rem] bg-gray-700 bg-opacity-50 rounded-xl overflow-hidden shadow-lg p-4 shrink-0 flex flex-col items-center hover:scale-105 transform transition duration-300 group cursor-pointer">
+        <img className="w-max h-max object-cover rounded-lg" src={`https://media.themoviedb.org/t/p/w600_and_h900_bestv2/${movie.posterUrl}`} alt="Movie Poster" />
+        <div ref={containerRef} className="w-full overflow-hidden mt-3">
+          <h2
+            ref={titleRef}
+            className={`text-lg font-semibold text-white whitespace-nowrap inline-block ${isOverflowing
+              ? 'text-left group-hover:animate-marquee-bounce'
+              : 'text-center w-full'
+              }`}
+            style={isOverflowing ? {
+              animationDuration: `${animationDuration}s`
+            } : {}}
+          >
+            {movie.title}
+          </h2>
+        </div>
+        <h3 className="text-lg text-center text-white">{movie.year}</h3>
       </div>
-      <h3 className="text-lg text-center text-white">{movie.year}</h3>
-    </div>
+    </Link>
   );
 }
 

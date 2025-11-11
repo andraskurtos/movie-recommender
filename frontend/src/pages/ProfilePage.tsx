@@ -15,10 +15,16 @@ interface Review {
     createdAt: string;
 }
 
+interface RatingStats {
+    ratingCount: number;
+    averageRating: number;
+}
+
 function ProfilePage() {
     const { user } = useUser();
     const navigate = useNavigate();
     const [reviews, setReviews] = useState<Review[]>([]);
+    const [stats, setStats] = useState<RatingStats | null>(null);
     const [loading, setLoading] = useState(true);
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5253';
 
@@ -33,11 +39,20 @@ function ProfilePage() {
             if (!user?.id) return;
             
             try {
-                const response = await fetch(`${API_URL}/api/Users/${user.id}/ratings`);
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Reviews fetched:', data);
-                    setReviews(data);
+                // Fetch reviews
+                const reviewsResponse = await fetch(`${API_URL}/api/User/${user.id}/ratings`);
+                if (reviewsResponse.ok) {
+                    const reviewsData = await reviewsResponse.json();
+                    console.log('Reviews fetched:', reviewsData);
+                    setReviews(reviewsData);
+                }
+
+                // Fetch rating stats
+                const statsResponse = await fetch(`${API_URL}/api/User/${user.id}/rating-stats`);
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    console.log('Stats fetched:', statsData);
+                    setStats(statsData);
                 }
             } catch (error) {
                 console.error('Error fetching reviews:', error);
@@ -49,10 +64,73 @@ function ProfilePage() {
         fetchReviews();
     }, [user?.id, API_URL]);
 
+    
+    useEffect(() => {
+        // Re-fetch reviews & stats whenever the number of reviews changes (e.g. after a deletion)
+        if (!user?.id) return;
+
+        let mounted = true;
+        const refresh = async () => {
+            try {
+                const [reviewsResp, statsResp] = await Promise.all([
+                    fetch(`${API_URL}/api/User/${user.id}/ratings`),
+                    fetch(`${API_URL}/api/User/${user.id}/rating-stats`),
+                ]);
+
+                if (!mounted) return;
+
+                if (reviewsResp.ok) {
+                    const reviewsData = await reviewsResp.json();
+                    setReviews(reviewsData);
+                } else {
+                    console.error('Failed to fetch reviews:', reviewsResp.status);
+                }
+
+                if (statsResp.ok) {
+                    const statsData = await statsResp.json();
+                    setStats(statsData);
+                } else {
+                    console.error('Failed to fetch stats:', statsResp.status);
+                }
+            } catch (err) {
+                console.error('Error refreshing reviews:', err);
+            }
+        };
+
+        refresh();
+
+        return () => {
+            mounted = false;
+        };
+    }, [reviews.length, user?.id, API_URL]);
+
+    const handleRemoveReview = async (reviewId: number) => {
+        if (!user?.id) return;
+
+        const confirmDelete = window.confirm("Are you sure you want to remove this review?");
+        if (!confirmDelete) return;
+        
+        try {
+            const response = await fetch(`${API_URL}/api/User/${user.id}/ratings/${reviewId}`, {
+                method: 'DELETE',
+            });
+            
+            if (response.ok) {
+                setReviews(prevReviews => prevReviews.filter(review => review.id !== reviewId));
+            } else {
+                console.error('Failed to delete review:', response.status);
+                alert('Failed to delete review. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error deleting review:', error);
+            alert('An error occurred while deleting the review. Please try again.');
+        }
+    };
+    
     if (!user) {
         return null;
     }
-
+    
     return (
         <div className="min-h-screen bg-gray-900">
             {/* Profile Header Section - 1/3 of viewport height */}
@@ -91,11 +169,11 @@ function ProfilePage() {
                                 </p>
                                 <div className="flex items-center space-x-4 mt-4">
                                     <div className="text-center">
-                                        <div className="text-xl font-bold text-gray-100">127</div>
+                                        <div className="text-xl font-bold text-gray-100">{stats?.ratingCount || 0}</div>
                                         <div className="text-sm text-gray-400">Ratings</div>
                                     </div>
                                     <div className="text-center">
-                                        <div className="text-xl font-bold text-gray-100">4.2</div>
+                                        <div className="text-xl font-bold text-gray-100">{stats?.averageRating || 0}</div>
                                         <div className="text-sm text-gray-400">Avg Rating</div>
                                     </div>
                                 </div>
@@ -141,7 +219,7 @@ function ProfilePage() {
                                             {review.reviewText && (
                                                 <div className="flex-grow overflow-y-auto mb-2">
                                                     <p className="text-gray-200 text-xs leading-relaxed">
-                                                        "{review.reviewText}"
+                                                        {review.reviewText}
                                                     </p>
                                                 </div>
                                             )}
@@ -149,6 +227,9 @@ function ProfilePage() {
                                             <p className="text-gray-400 text-xs">
                                                 {new Date(review.createdAt).toLocaleDateString()}
                                             </p>
+                                            <button onClick={() => handleRemoveReview(review.id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                                                Remove
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

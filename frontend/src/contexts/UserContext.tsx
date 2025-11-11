@@ -6,17 +6,17 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(() => {
-        // Try to get user data from sessionStorage on initial load
-        const storedUser = sessionStorage.getItem('user');
+        // Try to get user data from localStorage on initial load
+        const storedUser = localStorage.getItem('user');
         return storedUser ? JSON.parse(storedUser) : null;
     });
 
-    // Update sessionStorage whenever user state changes
+    // Update localStorage whenever user state changes
     useEffect(() => {
         if (user) {
-            sessionStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('user', JSON.stringify(user));
         } else {
-            sessionStorage.removeItem('user');
+            localStorage.removeItem('user');
         }
     }, [user]);
 
@@ -45,7 +45,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     const logout = () => {
         setUser(null);
-        sessionStorage.removeItem('user');
+        localStorage.removeItem('user');
     };
 
     return (

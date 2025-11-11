@@ -36,8 +36,69 @@ namespace backend.Controllers
                 .ToListAsync();
         }
 
+        [HttpDelete("{id}/ratings/{ratingId}")]
+        public async Task<IActionResult> DeleteUser(int id, int ratingId)
+        {
+            var rating = await _context.UserRatings
+                .FirstOrDefaultAsync(r => r.Id == ratingId && r.User.Id == id);
+
+            if (rating == null)
+            {
+                return NotFound("Rating not found");
+            }
+
+            _context.UserRatings.Remove(rating);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        // GET: api/User/5/ratings
+        [HttpGet("{id}/ratings")]
+        public async Task<ActionResult<IEnumerable<object>>> GetUserRatings(int id)
+        {
+            var ratings = await _context.UserRatings
+                .Where(r => r.User.Id == id)
+                .Include(r => r.Movie)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new
+                {
+                    id = r.Id,
+                    movie = new
+                    {
+                        id = r.Movie.Id,
+                        title = r.Movie.Title,
+                        year = r.Movie.Year,
+                        posterUrl = r.Movie.PosterUrl
+                    },
+                    rating = r.Rating,
+                    reviewText = r.Review,
+                    createdAt = r.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(ratings);
+        }
+
+        // GET: api/User/5/rating-stats
+        [HttpGet("{id}/rating-stats")]
+        public async Task<ActionResult<object>> GetUserRatingStats(int id)
+        {
+            var ratings = await _context.UserRatings
+                .Where(r => r.User.Id == id)
+                .ToListAsync();
+
+            var ratingCount = ratings.Count;
+            var averageRating = ratingCount > 0 ? ratings.Average(r => r.Rating) : 0;
+
+            return Ok(new
+            {
+                ratingCount = ratingCount,
+                averageRating = Math.Round(averageRating, 1)
+            });
+        }
+
         // GET: api/User/5
-        [HttpGet("{id}")]
         public async Task<ActionResult<User>> GetUser(int id)
         {
             var user = await _context.Users
@@ -176,6 +237,81 @@ namespace backend.Controllers
             });
         }
 
+        // POST: api/User/{id}/ratings
+        [HttpPost("{id}/ratings")]
+        public async Task<ActionResult<object>> AddRating(int id, AddRatingDto ratingDto)
+        {
+            // Validate rating is between 1 and 10
+            if (ratingDto.Rating < 1 || ratingDto.Rating > 10)
+            {
+                return BadRequest("Rating must be between 1 and 10");
+            }
+
+            // Check if user exists
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound("User not found");
+            }
+
+            // Check if movie exists
+            var movie = await _context.Movies.FindAsync(ratingDto.MovieId);
+            if (movie == null)
+            {
+                return NotFound("Movie not found");
+            }
+
+            // Check if user has already rated this movie
+            var existingRating = await _context.UserRatings
+                .FirstOrDefaultAsync(r => r.User.Id == id && r.Movie.Id == ratingDto.MovieId);
+
+            if (existingRating != null)
+            {
+                // Update existing rating
+                existingRating.Rating = ratingDto.Rating;
+                existingRating.Review = ratingDto.Review;
+                existingRating.UpdatedAt = DateTime.UtcNow;
+                _context.UserRatings.Update(existingRating);
+            }
+            else
+            {
+                // Create new rating
+                var newRating = new UserRating
+                {
+                    User = user,
+                    Movie = movie,
+                    Rating = ratingDto.Rating,
+                    Review = ratingDto.Review,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.UserRatings.Add(newRating);
+            }
+
+            await _context.SaveChangesAsync();
+
+            // Return the rating with movie details
+            var rating = await _context.UserRatings
+                .Where(r => r.User.Id == id && r.Movie.Id == ratingDto.MovieId)
+                .Include(r => r.Movie)
+                .Select(r => new
+                {
+                    id = r.Id,
+                    movie = new
+                    {
+                        id = r.Movie.Id,
+                        title = r.Movie.Title,
+                        year = r.Movie.Year,
+                        posterUrl = r.Movie.PosterUrl
+                    },
+                    rating = r.Rating,
+                    reviewText = r.Review,
+                    createdAt = r.CreatedAt
+                })
+                .FirstOrDefaultAsync();
+
+            return Ok(rating);
+        }
+
         private bool UserExists(int id)
         {
             return _context.Users.Any(e => e.Id == id);
@@ -216,5 +352,12 @@ namespace backend.Controllers
         public string? DisplayName { get; set; }
         public string? ProfilePictureUrl { get; set; }
         public string? Password { get; set; }
+    }
+
+    public class AddRatingDto
+    {
+        public int MovieId { get; set; }
+        public int Rating { get; set; }
+        public string? Review { get; set; }
     }
 }
