@@ -43,63 +43,98 @@ class MovieRecommender:
         
         return None
 
-    def predict_rating(self, user_id: int, movie_id: int) -> float:
-        """Predict rating for a specific user and movie."""
-        prediction = self.model.predict(user_id, movie_id)
-        return prediction.est
-    
-    def get_recommendations(self, 
-                          user_id: int, 
+    def get_recommendations(self,
+                          user_id: int,
                           user_ratings: List[Dict[str, any]],
                           n_recommendations: int = 50) -> List[Dict]:
         """
         Generate movie recommendations for a user based on their ratings.
-        
-        Args:
-            user_id: The database ID of the user
-            user_ratings: List of dictionaries containing title, year, and rating
-            n_recommendations: Number of recommendations to return
-            
-        Returns:
-            List of dictionaries containing movie details and predicted ratings
+        This method computes a user factor vector for the new user based on their ratings
+        and then uses it to predict ratings for other movies.
         """
-        # Convert user ratings to MovieLens IDs
+
+        # 1. Process user ratings
         rated_movies = []
+        rated_movie_ids = set()
         for rating in user_ratings:
             ml_movie_id = self.find_movie_id(rating['title'], rating['year'])
             if ml_movie_id is not None:
-                rated_movies.append({
-                    'movie_id': ml_movie_id,
-                    'rating': rating['rating']
-                })
-        
-        # Get all movie IDs
-        all_movie_ids = self.movies_df['movieId'].unique()
-        
-        # Get IDs of movies the user has already rated
-        rated_movie_ids = {r['movie_id'] for r in rated_movies}
-        
-        # Get unrated movies
-        unrated_movie_ids = [mid for mid in all_movie_ids if mid not in rated_movie_ids]
-        
-        # Predict ratings for all unrated movies
-        predictions = []
+                # Scale rating to the model's scale (e.g., 0.5-5 if original is 1-10)
+                scaled_rating = float(rating['rating']) / 2
+                rated_movies.append({'movie_id': ml_movie_id, 'rating': scaled_rating})
+                rated_movie_ids.add(ml_movie_id)
+
+        if not rated_movies:
+            return []
+
+        # 2. Prepare for solving for the new user's factor vector
+        global_mean = self.model.trainset.global_mean
+        item_factors = self.model.qi
+        item_biases = self.model.bi
+
+        Q = []
+        y = []
+
+        for rated in rated_movies:
+            try:
+                inner_iid = self.model.trainset.to_inner_iid(rated['movie_id'])
+                q_i = item_factors[inner_iid]
+                b_i = item_biases[inner_iid]
+
+                Q.append(q_i)
+                y.append(rated['rating'] - global_mean - b_i)
+            except ValueError:
+                continue
+
+        if not Q:
+            return []
+
+        Q = np.array(Q)
+        y = np.array(y)
+
+        # 3. Solve for the user factor vector p_u using Ridge Regression
+        n_factors = self.model.n_factors
+        lambda_ = self.model.reg_pu
+
+        A = Q.T @ Q + lambda_ * np.identity(n_factors)
+        b = Q.T @ y
+        p_u = np.linalg.solve(A, b)
+
+        # 4. Predict ratings for all unrated movies
+        all_movie_ids = set(self.movies_df['movieId'].unique())
+        unrated_movie_ids = all_movie_ids - rated_movie_ids
+
+        predictions = {}
+        rating_scale = self.model.trainset.rating_scale
+
         for movie_id in unrated_movie_ids:
-            predicted_rating = self.predict_rating(user_id, movie_id)
+            try:
+                inner_iid = self.model.trainset.to_inner_iid(movie_id)
+                q_j = item_factors[inner_iid]
+                b_j = item_biases[inner_iid]
+
+                predicted_rating = global_mean + b_j + np.dot(p_u, q_j)
+
+                if rating_scale is not None:
+                    predicted_rating = np.clip(predicted_rating, rating_scale[0], rating_scale[1])
+
+                predictions[movie_id] = predicted_rating
+            except ValueError:
+                continue
+
+        # 5. Build recommendations list
+        sorted_recs = sorted(predictions.items(), key=lambda x: x[1], reverse=True)
+
+        recs = []
+        for movie_id, est in sorted_recs[:n_recommendations]:
             movie_data = self.movies_df[self.movies_df['movieId'] == movie_id].iloc[0]
-            
-            predictions.append({
+            recs.append({
                 'title': movie_data['title'],
                 'year': int(movie_data['year']) if pd.notnull(movie_data['year']) else None,
-                'predicted_rating': float(predicted_rating * 2)  # Convert back from 0.5-5 to 1-10 scale
+                'predicted_rating': float(est * 2)  # scale back to 1-10 for the backend
             })
-        
-        # Sort by predicted rating and get top N
-        recommendations = sorted(predictions, 
-                               key=lambda x: x['predicted_rating'], 
-                               reverse=True)[:n_recommendations]
-        
-        return recommendations
+
+        return recs
 
     def update_user_ratings(self, user_id: int, new_ratings: List[Dict[str, int]]) -> None:
         """
