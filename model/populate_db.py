@@ -86,8 +86,8 @@ def main():
     script_dir = Path(__file__).parent
     
     # Read links.csv to get TMDB IDs
-    movies_path = script_dir / "ml-latest-small/movies.csv"
-    links_path = script_dir / "ml-latest-small/links.csv"
+    movies_path = script_dir / "ml-latest/movies.csv"
+    links_path = script_dir / "ml-latest/links.csv"
     
     # Load genre mapping first
     genres_response = requests.get(f"{BACKEND_URL}/api/genres")

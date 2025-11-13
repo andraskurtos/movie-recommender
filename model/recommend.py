@@ -6,11 +6,14 @@ import os
 import sys
 import re
 import pickle
+import requests # Added requests import
+
+BACKEND_URL = "http://localhost:5253" # Backend URL constant
 
 class MovieRecommender:
     def __init__(self, model_path: str = 'saved_models/svd_model.pkl'):
         # Load movies data for metadata
-        self.movies_df = pd.read_csv('ml-latest-small/movies.csv')
+        self.movies_df = pd.read_csv('ml-latest/movies.csv')
         
         # Load the model from pickle file
         with open(model_path, 'rb') as f:
@@ -42,6 +45,29 @@ class MovieRecommender:
                     return int(movie['movieId'])
         
         return None
+
+    def _fetch_user_ratings_from_backend(self, user_id: int) -> List[Dict]:
+        """Fetches user ratings from the backend API."""
+        try:
+            response = requests.get(f"{BACKEND_URL}/api/User/{user_id}/ratings")
+            response.raise_for_status() # Raise an exception for HTTP errors
+            backend_ratings_data = response.json()
+
+            fetched_ratings = []
+            for r in backend_ratings_data:
+                # Extract relevant info from the backend's JSON structure
+                movie_title = r['movie']['title']
+                movie_year = r['movie']['year']
+                rating_value = r['rating']
+                fetched_ratings.append({
+                    'title': movie_title,
+                    'year': movie_year,
+                    'rating': rating_value
+                })
+            return fetched_ratings
+        except requests.exceptions.RequestException as e:
+            print(f"Error fetching ratings for user {user_id} from backend: {e}", file=sys.stderr)
+            return []
 
     def get_recommendations(self,
                           user_id: int,
@@ -92,13 +118,23 @@ class MovieRecommender:
         Q = np.array(Q)
         y = np.array(y)
 
-        # 3. Solve for the user factor vector p_u using Ridge Regression
+        # 3. Solve for the user factor vector p_u and bias b_u using Ridge Regression
         n_factors = self.model.n_factors
-        lambda_ = self.model.reg_pu
+        
+        # Augment Q with a column of ones for the bias term
+        Q_aug = np.hstack([np.ones((Q.shape[0], 1)), Q])
+        
+        # Create regularization matrix
+        reg_vector = np.array([self.model.reg_bu] + [self.model.reg_pu] * n_factors)
+        L = np.diag(reg_vector)
 
-        A = Q.T @ Q + lambda_ * np.identity(n_factors)
-        b = Q.T @ y
-        p_u = np.linalg.solve(A, b)
+        # Solve the regularized least squares problem
+        A = Q_aug.T @ Q_aug + L
+        b = Q_aug.T @ y
+        x = np.linalg.solve(A, b)
+        
+        b_u = x[0]
+        p_u = x[1:]
 
         # 4. Predict ratings for all unrated movies
         all_movie_ids = set(self.movies_df['movieId'].unique())
@@ -113,7 +149,7 @@ class MovieRecommender:
                 q_j = item_factors[inner_iid]
                 b_j = item_biases[inner_iid]
 
-                predicted_rating = global_mean + b_j + np.dot(p_u, q_j)
+                predicted_rating = global_mean + b_u + b_j + np.dot(p_u, q_j)
 
                 if rating_scale is not None:
                     predicted_rating = np.clip(predicted_rating, rating_scale[0], rating_scale[1])

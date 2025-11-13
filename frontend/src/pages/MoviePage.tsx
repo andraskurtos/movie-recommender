@@ -13,6 +13,11 @@ interface Movie {
     backdropUrl: string;
 }
 
+interface Recommendation {
+    movie: Movie;
+    predictedRating: number;
+}
+
 interface UserRating {
     id: number;
     movie: {
@@ -36,6 +41,8 @@ const MoviePage = () => {
     const [ratingInput, setRatingInput] = useState<number>(5);
     const [showRatingForm, setShowRatingForm] = useState(false);
     const [submittingRating, setSubmittingRating] = useState(false);
+    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+    const [recommendationsLoading, setRecommendationsLoading] = useState(true);
     const API_URL = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
@@ -65,8 +72,33 @@ const MoviePage = () => {
             }
         };
 
+        const loadRecommendations = async () => {
+            if (!user) {
+                setRecommendationsLoading(false);
+                return;
+            }
+    
+            try {
+                setRecommendationsLoading(true);
+                
+                const response = await fetch(`${API_URL}/api/Recommendations/${user.id}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch recommendations: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Recommendations received:', data);
+                setRecommendations(data);
+            } catch (error) {
+                console.error("Error fetching recommendations:", error);
+            } finally {
+                setRecommendationsLoading(false);
+            }
+        };
+
         if (id) {
             fetchMovie();
+            loadRecommendations();
         }
     }, [id, API_URL, user]);
 
@@ -112,6 +144,17 @@ const MoviePage = () => {
         }
     };
 
+    // Skeleton Loader Component
+    const SkeletonMovieCard = () => (
+        <div className="MovieCard max-w-[16rem] max-h-[27rem] bg-gray-700 bg-opacity-50 rounded-xl overflow-hidden shadow-lg p-4 shrink-0 flex flex-col items-center animate-pulse group">
+            <div className="w-[220px] h-[330px] bg-gray-600 rounded-lg object-cover"></div>
+            <div className="w-full overflow-hidden mt-3">
+                <div className="w-full h-6 bg-gray-600 rounded mb-2"></div>
+            </div>
+            <div className="h-6 bg-gray-600 rounded w-12"></div>
+        </div>
+    );
+
     if (loading) {
         return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white"></div>;
     }
@@ -138,16 +181,11 @@ const MoviePage = () => {
           </div>
           <div className="MovieDetails flex flex-col ml-6 mr-6 bg-gray-900 bg-opacity-40 p-4 rounded-lg backdrop-blur-sm">
             <h2 className="text-2xl font-bold">Details</h2>
-            <h3 className="text-lg w-full text-gray-100">Director: John Doe</h3>
-            <h3 className="text-lg w-full text-gray-100">Genre: Action, Sci-Fi</h3>
             <h3 className="text-lg w-full text-gray-100">Duration: 2h 15m</h3>
             <h3 className="text-lg w-full text-gray-100">Language: {movie.originalLanguage}</h3>
           </div>
           <div className="MovieRatings flex flex-col ml-6 mr-6 bg-gray-900 bg-opacity-40 p-4 rounded-lg backdrop-blur-sm">
-            <h2 className="text-2xl font-bold">Ratings</h2>
-            <h3 className="text-lg w-full text-gray-100">IMDb: 8.5/10</h3>
-            <h3 className="text-lg w-full text-gray-100">Rotten Tomatoes: 95%</h3>
-            <h2 className="text-2xl font-bold mt-6">Your Rating</h2>
+            <h2 className="text-2xl font-bold">Your Rating</h2>
             {userRating ? (
               <div>
                 <h3 className="text-lg w-full text-gray-100">Rating: {userRating.rating}/10</h3>
@@ -206,7 +244,24 @@ const MoviePage = () => {
                 <button className="text-2xl font-bold text-white">Movie Cast</button>
             </div>
             <div className="flex shrink-0 flex-row justify-top overflow-y-hidden overflow-x-scroll scrollbar-none gap-4 bg-gradient-to-r from-black via-transparent to-transparent bg-opacity-50 h-1/3 w-full rounded-lg p-4">
-                <MovieCard movie={{posterUrl: "https://media.themoviedb.org/t/p/w600_and_h900_bestv2/cm8TNGBGG0aBfWj0LgrESHv8tir.jpg", title: "The Fantastic 4: First Steps", year: 2025}} />
+                {recommendationsLoading ? (
+                    [...Array(10)].map((_, i) => (
+                        <SkeletonMovieCard key={i} />
+                    ))
+                ) : recommendations.length > 0 ? (
+                    recommendations
+                        .filter(rec => rec.movie.id !== movie.id) // Filter out the current movie
+                        .map((rec: Recommendation) => (
+                            <div key={rec.movie.id} className="relative">
+                                <MovieCard movie={rec.movie} />
+                                <div className="absolute top-2 right-2 bg-yellow-500 text-black px-2 py-1 rounded text-sm font-bold">
+                                    {(rec.predictedRating).toFixed(0)}/10
+                                </div>
+                            </div>
+                        ))
+                ) : (
+                    <div className="text-white">No recommendations available.</div>
+                )}
             </div>
         </div>
       </div>

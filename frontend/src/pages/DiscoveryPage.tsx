@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import MovieCard from "../components/MovieCard";
 import { movieService } from "../services/MovieService";
+import { useUser } from "../hooks/useUser";
 
 interface Movie {
     id: number;
@@ -15,6 +16,7 @@ interface Recommendation {
 }
 
 function DiscoveryPage() {
+    const { user } = useUser();
     const [movies, setMovies] = useState<Movie[]>([]);
     const [suggestions, setSuggestions] = useState<Recommendation[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,12 +51,15 @@ function DiscoveryPage() {
     }, []);
 
     const loadSuggestions = useCallback(async () => {
+        if (!user) {
+            setSuggestionsLoading(false);
+            return;
+        }
+
         try {
             setSuggestionsLoading(true);
-            // Get the current user ID from localStorage or auth context
-            const userId = localStorage.getItem('userId') || '1'; // Default to user 1 for now
             
-            const response = await fetch(`${API_URL}/api/Recommendations/${userId}`);
+            const response = await fetch(`${API_URL}/api/Recommendations/${user.id}`);
             if (!response.ok) {
                 throw new Error(`Failed to fetch recommendations: ${response.status}`);
             }
@@ -67,7 +72,7 @@ function DiscoveryPage() {
         } finally {
             setSuggestionsLoading(false);
         }
-    }, [API_URL]);
+    }, [API_URL, user]);
 
     // Initial load
     useEffect(() => {
@@ -76,10 +81,10 @@ function DiscoveryPage() {
 
     // Load suggestions when tab changes to suggestions
     useEffect(() => {
-        if (activeTab === 'suggestions' && suggestions.length === 0 && !suggestionsLoading) {
+        if (activeTab === 'suggestions' && user && suggestions.length === 0 && !suggestionsLoading) {
             loadSuggestions();
         }
-    }, [activeTab, suggestions.length, suggestionsLoading, loadSuggestions]);
+    }, [activeTab, user, suggestions.length, suggestionsLoading, loadSuggestions]);
 
     // Infinite scroll observer
     useEffect(() => {
