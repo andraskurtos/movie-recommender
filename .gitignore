@@ -1,0 +1,42 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+*.caches
+.env
+
+recommender_env
+#backend stuff
+backend/bin
+backend/Properties
+backend/appsettings.json
+backend/appsettings.Development.json
+backend/obj
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+
+model/ml-latest
+model/__pycache__
+model/ml-latest-small
+model/ml-latest
+recommender_env
