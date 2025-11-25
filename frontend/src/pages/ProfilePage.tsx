@@ -21,12 +21,41 @@ interface RatingStats {
 }
 
 function ProfilePage() {
-    const { user } = useUser();
+    const { user, setUser } = useUser();
     const navigate = useNavigate();
     const [reviews, setReviews] = useState<Review[]>([]);
     const [stats, setStats] = useState<RatingStats | null>(null);
     const [loading, setLoading] = useState(true);
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5253';
+
+    const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !user) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch(`${API_URL}/api/User/${user.id}/profile-picture`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (setUser) {
+                    setUser({ ...user, profilePictureUrl: data.profilePictureUrl });
+                }
+                // Optionally, force a re-render or show a success message
+            } else {
+                console.error('Failed to upload profile picture');
+                // Handle error display to the user
+            }
+        } catch (error) {
+            console.error('Error uploading profile picture:', error);
+        }
+    };
+
 
     useEffect(() => {
         if (!user) {
@@ -138,13 +167,47 @@ function ProfilePage() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
                     <div className="flex items-center h-full py-6">
                         {/* Profile Picture */}
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 relative group">
                             <div className="h-40 w-40 rounded-full bg-gray-700 border-4 border-gray-600 shadow-lg overflow-hidden">
                                 {/* Placeholder profile image */}
-                                <img 
-                                    src={user.profilePictureUrl || 'https://via.placeholder.com/150'}
+                                <img
+                                    src={user.profilePictureUrl ? `${API_URL}${user.profilePictureUrl}` : 'https://via.placeholder.com/150'}
                                     alt="Profile"
                                     className="h-full w-full object-cover"
+                                />
+                            </div>
+                            <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <label
+                                    htmlFor="profile-picture-upload"
+                                    className="text-white rounded-full p-2 cursor-pointer"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-10 w-10"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                        />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                        />
+                                    </svg>
+                                </label>
+                                <input
+                                    id="profile-picture-upload"
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={handleProfilePictureUpload}
                                 />
                             </div>
                         </div>

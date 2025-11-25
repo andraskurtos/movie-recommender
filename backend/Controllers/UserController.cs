@@ -202,6 +202,40 @@ namespace backend.Controllers
             return NoContent();
         }
 
+        [HttpPost("{id}/profile-picture")]
+        public async Task<IActionResult> UploadProfilePicture(int id, IFormFile file)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest("No file uploaded.");
+            }
+
+            var uploadsFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads");
+            if (!Directory.Exists(uploadsFolderPath))
+            {
+                Directory.CreateDirectory(uploadsFolderPath);
+            }
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            var filePath = Path.Combine(uploadsFolderPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            user.ProfilePictureUrl = $"/Uploads/{fileName}";
+            await _context.SaveChangesAsync();
+
+            return Ok(new { profilePictureUrl = user.ProfilePictureUrl });
+        }
+
         // POST: api/User/login
         [HttpPost("login")]
         public async Task<ActionResult<User>> Login(LoginDto loginDto)

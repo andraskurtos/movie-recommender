@@ -8,6 +8,7 @@ interface Movie {
     posterUrl: string;
     title: string;
     year: number;
+    overview: string;
 }
 
 interface Recommendation {
@@ -141,7 +142,7 @@ function DiscoveryPage() {
     }
 
     return (
-      <div className="DiscoveryPage min-h-screen bg-gray-900 pt-6" ref={containerRef}>
+      <div className="DiscoveryPage min-h-screen bg-gradient-to-br from-gray-800 to-gray-900 pt-6" ref={containerRef}>
         <div className="sectionBar w-full flex justify-center items-center">
           <button 
             onClick={() => setActiveTab('all')}
@@ -159,7 +160,7 @@ function DiscoveryPage() {
         </div>
 
         {activeTab === 'all' && (
-          <div className="flex flex-wrap flex-row justify-center gap-6 p-6">
+          <div className="flex flex-wrap flex-row justify-center gap-2 md:gap-6 p-2 md:p-6">
               {
                   movies.map((movie: Movie) => (
                       <MovieCard key={movie.id} movie={movie} />
@@ -177,7 +178,7 @@ function DiscoveryPage() {
                 ))}
               </div>
             ) : suggestions.length > 0 ? (
-              <div className="flex flex-wrap flex-row justify-center gap-6 p-6 w-full">
+              <div className="flex flex-wrap flex-row justify-center gap-2 md:gap-6 p-2 md:p-6 w-full">
                 {suggestions.map((rec: Recommendation) => (
                   <div key={rec.movie.id} className="relative">
                     <MovieCard movie={rec.movie} />

@@ -4,10 +4,9 @@ import SearchMovieCard from "./SearchMovieCard";
 interface SearchDropdownProps {
     isVisible: boolean;
     searchQuery: string;
-    onItemClick?: () => void;
 }
 
-const SearchDropdown = ({ isVisible, searchQuery, onItemClick }: SearchDropdownProps) => {
+const SearchDropdown = ({ isVisible, searchQuery }: SearchDropdownProps) => {
 
     const [movies, setMovies] = useState<Movie[]>([]);
     const [loading, setLoading] = useState(true);
@@ -180,7 +179,6 @@ const SearchDropdown = ({ isVisible, searchQuery, onItemClick }: SearchDropdownP
                         <SearchMovieCard 
                             key={index} 
                             movie={movie} 
-                            onItemClick={onItemClick}
                         />
                     ))
                 ) : (

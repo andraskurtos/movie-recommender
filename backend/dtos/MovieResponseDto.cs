@@ -10,5 +10,12 @@ namespace backend.Dtos
         public string OriginalLanguage { get; set; } = "";
         public string Overview { get; set; } = "";
         public List<int> Genres { get; set; } = new List<int>();
+
+        // --- New Properties ---
+        public int Runtime { get; set; }
+        public string Tagline { get; set; } = "";
+        public double VoteAverage { get; set; }
+        public string ProductionCompany { get; set; } = "";
+        public string Director { get; set; } = "";
     }
 }

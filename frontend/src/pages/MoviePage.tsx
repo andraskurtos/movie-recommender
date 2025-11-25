@@ -11,6 +11,7 @@ interface Movie {
     overview: string;
     originalLanguage: string;
     backdropUrl: string;
+    runtime: number;
 }
 
 interface Recommendation {
@@ -136,12 +137,19 @@ const MoviePage = () => {
             console.log("Rating submitted successfully:", newRating);
             setUserRating(newRating);
             setShowRatingForm(false);
-        } catch (error) {
+        } catch (error)
+        {
             console.error("Error submitting rating:", error);
             alert("Failed to submit rating: " + error);
         } finally {
             setSubmittingRating(false);
         }
+    };
+
+    const formatRuntime = (minutes: number) => {
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        return `${hours}h ${remainingMinutes}m`;
     };
 
     // Skeleton Loader Component
@@ -162,107 +170,122 @@ const MoviePage = () => {
     if (!movie) {
         return <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">Movie not found</div>;
     }
-
+    
     return (
-      <div className="MoviePage relative h-max flex flex-col bg-gray-900" style={{backgroundImage: `url(https://media.themoviedb.org/t/p/original/${movie.backdropUrl})`, backgroundAttachment: 'fixed', backgroundSize: 'cover', backgroundPosition: 'center'}}>
+      <div className="MoviePage relative min-h-screen bg-gray-900" style={{backgroundImage: `url(https://media.themoviedb.org/t/p/original/${movie.backdropUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed'}}>
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black bg-opacity-60 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-black bg-opacity-70 pointer-events-none"></div>
         
-        <div className="MovieData relative z-10 flex flex-row text-white w-full h-[18rem] px-6 pt-6">
-          <img
-            className="w-[12rem] h-[18rem] object-cover rounded-lg ml-6 shadow-lg"
-            src={`https://media.themoviedb.org/t/p/w600_and_h900_bestv2/${movie.posterUrl}`}
-            alt="Movie Poster"
-          />
-          <div className="MovieInfo flex flex-col ml-6 mr-6 bg-gray-900 bg-opacity-40 p-4 rounded-lg backdrop-blur-sm">
-            <h2 className="text-2xl font-bold">{movie.title}</h2>
-            <h3 className="text-lg text-gray-300">{movie.year}</h3>
-            <p className="text-gray-100 h-max w-[40rem] overflow-scroll scrollbar-none text-sm leading-relaxed">{movie.overview}</p>
-          </div>
-          <div className="MovieDetails flex flex-col ml-6 mr-6 bg-gray-900 bg-opacity-40 p-4 rounded-lg backdrop-blur-sm">
-            <h2 className="text-2xl font-bold">Details</h2>
-            <h3 className="text-lg w-full text-gray-100">Duration: 2h 15m</h3>
-            <h3 className="text-lg w-full text-gray-100">Language: {movie.originalLanguage}</h3>
-          </div>
-          <div className="MovieRatings flex flex-col ml-6 mr-6 bg-gray-900 bg-opacity-40 p-4 rounded-lg backdrop-blur-sm">
-            <h2 className="text-2xl font-bold">Your Rating</h2>
-            {userRating ? (
-              <div>
-                <h3 className="text-lg w-full text-gray-100">Rating: {userRating.rating}/10</h3>
-                <h3 className="text-lg w-full text-gray-100">Rated on: {new Date(userRating.createdAt || '').toLocaleDateString()}</h3>
-              </div>
-            ) : showRatingForm ? (
-              <div className="flex flex-col gap-3">
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={ratingInput}
-                  onChange={(e) => setRatingInput(parseInt(e.target.value))}
-                  className="w-full"
-                />
-                <div className="text-lg text-gray-100">Rating: {ratingInput}/10</div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSubmitRating}
-                    disabled={submittingRating}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white px-3 py-1 rounded text-sm"
-                  >
-                    {submittingRating ? 'Submitting...' : 'Submit'}
-                  </button>
-                  <button
-                    onClick={() => setShowRatingForm(false)}
-                    className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Cancel
-                  </button>
+        <div className="relative z-10 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+          {/* --- MOVIE DATA SECTION --- */}
+          <div className="MovieData flex flex-col md:flex-row md:items-start gap-6 mb-8">
+            <img
+              className="w-48 md:w-60 lg:w-72 h-auto object-cover rounded-lg mx-auto md:mx-0 shadow-lg flex-shrink-0"
+              src={`https://media.themoviedb.org/t/p/w600_and_h900_bestv2/${movie.posterUrl}`}
+              alt="Movie Poster"
+            />
+            <div className="flex flex-col gap-6 flex-grow">
+              {/* Movie Info, Details, and Ratings now stack on mobile */}
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="MovieInfo flex-grow bg-gray-900 bg-opacity-50 p-4 rounded-lg backdrop-blur-sm text-white">
+                    <h2 className="text-3xl md:text-4xl font-bold">{movie.title}</h2>
+                    <h3 className="text-xl text-gray-300 mb-4">{movie.year}</h3>
+                    <p className="text-gray-200 text-base leading-relaxed overflow-y-auto max-h-48 md:max-h-full scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">{movie.overview}</p>
+                </div>
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-6 flex-shrink-0">
+                  <div className="MovieDetails bg-gray-900 bg-opacity-50 p-4 rounded-lg backdrop-blur-sm text-white">
+                      <h2 className="text-2xl font-bold mb-2">Details</h2>
+                      <h3 className="text-lg w-full text-gray-200">Duration: {formatRuntime(movie.runtime)}</h3>
+                      <h3 className="text-lg w-full text-gray-200">Language: {movie.originalLanguage.toUpperCase()}</h3>
+                  </div>
+                  <div className="MovieRatings flex-grow bg-gray-900 bg-opacity-50 p-4 rounded-lg backdrop-blur-sm text-white">
+                      <h2 className="text-2xl font-bold mb-2">Your Rating</h2>
+                      {/* --- RATING LOGIC --- */}
+                      {userRating ? (
+                        <div>
+                          <h3 className="text-2xl font-bold text-yellow-400">{userRating.rating}/10</h3>
+                          <p className="text-xs text-gray-400">Rated on: {new Date(userRating.createdAt || '').toLocaleDateString()}</p>
+                        </div>
+                      ) : showRatingForm ? (
+                        <div className="flex flex-col gap-3">
+                          <input
+                            type="range" min="1" max="10"
+                            value={ratingInput}
+                            onChange={(e) => setRatingInput(parseInt(e.target.value))}
+                            className="w-full"
+                          />
+                          <div className="text-lg text-gray-100">{ratingInput}/10</div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleSubmitRating}
+                              disabled={submittingRating}
+                              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-500 text-white px-3 py-1 rounded text-sm"
+                            >
+                              {submittingRating ? 'Submitting...' : 'Submit'}
+                            </button>
+                            <button
+                              onClick={() => setShowRatingForm(false)}
+                              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : user ? (
+                        <button
+                          onClick={() => setShowRatingForm(true)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold w-max mt-2"
+                        >
+                          Add Rating
+                        </button>
+                      ) : (
+                        <div className="flex flex-col gap-3 mt-2">
+                          <p className="text-gray-100">Log in to rate movies</p>
+                          <button
+                            onClick={() => navigate('/login')}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold w-max"
+                          >
+                            Go to Login
+                          </button>
+                        </div>
+                      )}
+                  </div>
                 </div>
               </div>
-            ) : user ? (
-              <button
-                onClick={() => setShowRatingForm(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold w-max mt-2"
-              >
-                Add Rating
-              </button>
-            ) : (
-              <div className="flex flex-col gap-3 mt-2">
-                <p className="text-gray-100">Log in to rate movies</p>
-                <button
-                  onClick={() => navigate('/login')}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold w-max"
-                >
-                  Go to Login
-                </button>
-              </div>
-            )}
+            </div>
           </div>
-        </div>
-        <div className="MovieRecommendations relative z-10 flex flex-col mt-2 ml-6 mr-6 h-1/3">
-            <div className="sectionBar w-full flex-row flex p-4 justify-start gap-6">
-                <button className="text-2xl font-bold text-white">Recommended Movies</button>
-                <button className="text-2xl font-bold text-white">Movie Cast</button>
-            </div>
-            <div className="flex shrink-0 flex-row justify-top overflow-y-hidden overflow-x-scroll scrollbar-none gap-4 bg-gradient-to-r from-black via-transparent to-transparent bg-opacity-50 h-1/3 w-full rounded-lg p-4">
-                {recommendationsLoading ? (
-                    [...Array(10)].map((_, i) => (
-                        <SkeletonMovieCard key={i} />
-                    ))
-                ) : recommendations.length > 0 ? (
-                    recommendations
-                        .filter(rec => rec.movie.id !== movie.id) // Filter out the current movie
-                        .map((rec: Recommendation) => (
-                            <div key={rec.movie.id} className="relative">
-                                <MovieCard movie={rec.movie} />
-                                <div className="absolute top-2 right-2 bg-yellow-500 text-black px-2 py-1 rounded text-sm font-bold">
-                                    {(rec.predictedRating).toFixed(0)}/10
-                                </div>
-                            </div>
-                        ))
-                ) : (
-                    <div className="text-white">No recommendations available.</div>
-                )}
-            </div>
+          
+          {/* --- RECOMMENDATIONS SECTION --- */}
+          <div className="MovieRecommendations relative z-10 mt-8">
+              <div className="sectionBar flex justify-between items-center p-4">
+                  <h2 className="text-2xl font-bold text-white">Recommended Movies</h2>
+                  {/* Optional: Add cast button back if needed */}
+                  {/* <button className="text-xl font-bold text-white">Movie Cast</button> */}
+              </div>
+              {/* Grid for mobile, horizontal scroll for larger screens */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:flex lg:overflow-x-auto lg:scrollbar-none gap-4 lg:gap-6 lg:p-4 rounded-lg">
+                  {recommendationsLoading ? (
+                      [...Array(10)].map((_, i) => (
+                          <div key={i} className="flex-shrink-0 lg:w-56">
+                              <SkeletonMovieCard />
+                          </div>
+                      ))
+                  ) : recommendations.length > 0 ? (
+                      recommendations
+                          .filter(rec => rec.movie.id !== movie.id)
+                          .map((rec: Recommendation) => (
+                              <div key={rec.movie.id} className="relative flex-shrink-0 lg:w-56">
+                                  <MovieCard movie={rec.movie} />
+                                  <div className="absolute top-2 right-2 bg-yellow-500 text-black px-2 py-1 rounded text-sm font-bold">
+                                      {(rec.predictedRating).toFixed(0)}/10
+                                  </div>
+                              </div>
+                          ))
+                  ) : (
+                      <div className="text-white col-span-full">No recommendations available.</div>
+                  )}
+              </div>
+          </div>
         </div>
       </div>
     );

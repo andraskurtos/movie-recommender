@@ -7,9 +7,9 @@ export default {
   theme: {
     extend: {
       keyframes: {
-        'marquee-bounce': {
+        'dynamic-marquee': {
           '0%, 10%, 90%, 100%': { transform: 'translateX(0)' },
-          '45%, 55%': { transform: 'translateX(calc(-100% + 14rem))' }
+          '45%, 55%': { transform: 'var(--marquee-transform)' }
         },
         'slideDown': {
           '0%': { 
@@ -23,13 +23,14 @@ export default {
         }
       },
       animation: {
-        'marquee-bounce': 'marquee-bounce 6s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'dynamic-marquee': 'dynamic-marquee',
         'slideDown': 'slideDown 0.2s ease-out'
       }
     },
   },
   plugins: [
-    require('tailwind-scrollbar')
+    require('tailwind-scrollbar'),
+    require('@tailwindcss/line-clamp'),
   ],
 }
 

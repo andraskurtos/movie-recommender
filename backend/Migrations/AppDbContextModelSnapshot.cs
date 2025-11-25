@@ -50,6 +50,9 @@ namespace backend.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("TmdbId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("Genres");
@@ -67,6 +70,10 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Director")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("OriginalLanguage")
                         .IsRequired()
                         .HasColumnType("text");
@@ -79,9 +86,23 @@ namespace backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ProductionCompany")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Runtime")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Tagline")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<double>("VoteAverage")
+                        .HasColumnType("double precision");
 
                     b.Property<int>("Year")
                         .HasColumnType("integer");

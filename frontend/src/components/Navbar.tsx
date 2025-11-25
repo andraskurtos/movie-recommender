@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import SearchDropdown from './SearchDropdown';
 import { movieService } from '../services/MovieService';
 import { useUser } from '../hooks/useUser';
@@ -9,16 +9,28 @@ const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [showDropdown, setShowDropdown] = useState(false);
-    const searchContainerRef = useRef<HTMLDivElement>(null);
+    const desktopSearchContainerRef = useRef<HTMLDivElement>(null);
+    const mobileSearchContainerRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const { user, logout } = useUser();
+    const location = useLocation();
+
+    // Close dropdown on navigation
+    useEffect(() => {
+        setShowDropdown(false);
+    }, [location]);
     
     // handle clicks outside the search container
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
-                setShowDropdown(false);
+            const target = event.target as Node;
+            if (desktopSearchContainerRef.current?.contains(target)) {
+                return;
             }
+            if (mobileSearchContainerRef.current?.contains(target)) {
+                return;
+            }
+            setShowDropdown(false);
         };
         
         document.addEventListener("mousedown", handleClickOutside);
@@ -76,8 +88,13 @@ const Navbar = () => {
         <nav className="bg-gray-900 text-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="Title text-2xl font-bold flex-shrink-0">MovieRatr</div>
-            <div className="SearchBar text-gray-800 relative" ref={searchContainerRef}>
+            <div className="flex-shrink-0 md:hidden">
+                {/* Placeholder for spacing */}
+            </div>
+            <div className="Title text-2xl font-bold flex-shrink-0">
+                <Link to="/">MovieRatr</Link>
+            </div>
+            <div className="SearchBar text-gray-800 relative hidden md:block mx-auto" ref={desktopSearchContainerRef}>
                 <form onSubmit={(e) => SubmitSearch(e)} className="flex">
                     <input 
                         type="text" 
@@ -98,15 +115,11 @@ const Navbar = () => {
                 <SearchDropdown 
                     isVisible={showDropdown} 
                     searchQuery={searchQuery} 
-                    onItemClick={() => setShowDropdown(false)}
                 />
             </div>
             <div className="Links hidden md:flex space-x-6 items-center">
               <Link to="/" className="hover:text-yellow-400 transition">
                 Discover
-              </Link>
-              <Link to="/search" className="hover:text-yellow-400 transition">
-                Search
               </Link>
               <Link to="/profile" className="hover:text-yellow-400 transition">
                 My Profile
@@ -141,21 +154,38 @@ const Navbar = () => {
         <div
           className={`
     md:hidden bg-gray-800 overflow-hidden transform transition-all duration-300 ease-in-out
-    ${isOpen ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}
+    ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
   `}
         >
           <div className="px-2 pt-2 pb-3 space-y-1">
+            <div className="SearchBar text-gray-800 relative md:hidden" ref={mobileSearchContainerRef}>
+                <form onSubmit={(e) => SubmitSearch(e)} className="flex">
+                    <input 
+                        type="text" 
+                        placeholder="Search..." 
+                        className="px-4 py-2 rounded-l-md w-full" 
+                        onChange={handleSearchInput}
+                        value={searchQuery}
+                        onFocus={() => {
+                            if (searchQuery.trim().length > 0) {
+                                setShowDropdown(true);
+                            }
+                        }}
+                    />
+                    <button type="submit" className="bg-yellow-400 text-gray-900 px-4 py-2 rounded-r-md">Search</button>
+                        
+                </form>
+                
+                <SearchDropdown 
+                    isVisible={showDropdown} 
+                    searchQuery={searchQuery}
+                />
+            </div>
             <Link
               to="/"
               className="block px-3 py-2 rounded-md hover:bg-gray-700"
             >
               Discovery
-            </Link>
-            <Link
-              to="/search"
-              className="block px-3 py-2 rounded-md hover:bg-gray-700"
-            >
-              Search
             </Link>
             <Link
               to="/profile"

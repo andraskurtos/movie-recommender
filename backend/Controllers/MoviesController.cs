@@ -74,6 +74,13 @@ namespace backend.Controllers
                     PosterUrl = m.PosterUrl,
                     OriginalLanguage = m.OriginalLanguage,
                     Overview = m.Overview,
+                    // --- UPDATED ---
+                    // Add new fields to the response DTO
+                    Runtime = m.Runtime,
+                    Tagline = m.Tagline,
+                    VoteAverage = m.VoteAverage,
+                    ProductionCompany = m.ProductionCompany,
+                    Director = m.Director,
                     Genres = m.Genres.Select(g => g.Id).ToList()
                 })
                 .ToListAsync();
@@ -179,6 +186,8 @@ namespace backend.Controllers
                 Console.WriteLine($"Duplicate movie detected: '{movieDto.Title}' ({movieDto.Year}). Using existing movie with ID: {existingMovie.Id}");
                 // Return HTTP 200 OK with the existing movie and a custom header
                 Response.Headers.Append("X-Movie-Status", "Existing");
+                
+                // --- UPDATED ---
                 var existingMovieDto = new MovieResponseDto
                 {
                     Id = existingMovie.Id,
@@ -188,6 +197,12 @@ namespace backend.Controllers
                     PosterUrl = existingMovie.PosterUrl,
                     OriginalLanguage = existingMovie.OriginalLanguage,
                     Overview = existingMovie.Overview,
+                    // Add new fields
+                    Runtime = existingMovie.Runtime,
+                    Tagline = existingMovie.Tagline,
+                    VoteAverage = existingMovie.VoteAverage,
+                    ProductionCompany = existingMovie.ProductionCompany,
+                    Director = existingMovie.Director,
                     Genres = existingMovie.Genres.Select(g => g.Id).ToList()
                 };
                 return Ok(existingMovieDto);
@@ -197,6 +212,7 @@ namespace backend.Controllers
                 .Where(g => movieDto.Genres.Contains(g.Id))
                 .ToListAsync();
 
+            // --- UPDATED ---
             var movie = new Movie
             {
                 Title = movieDto.Title,
@@ -205,7 +221,13 @@ namespace backend.Controllers
                 PosterUrl = movieDto.PosterUrl,
                 OriginalLanguage = movieDto.OriginalLanguage,
                 Overview = movieDto.Overview,
-                Genres = genres
+                Genres = genres,
+                // Add new fields from the DTO
+                Runtime = movieDto.Runtime,
+                Tagline = movieDto.Tagline,
+                VoteAverage = movieDto.VoteAverage,
+                ProductionCompany = movieDto.ProductionCompany,
+                Director = movieDto.Director
             };
 
             try
@@ -213,6 +235,7 @@ namespace backend.Controllers
                 _context.Movies.Add(movie);
                 await _context.SaveChangesAsync();
                 
+                // --- UPDATED ---
                 var movieResponseDto = new MovieResponseDto
                 {
                     Id = movie.Id,
@@ -222,6 +245,12 @@ namespace backend.Controllers
                     PosterUrl = movie.PosterUrl,
                     OriginalLanguage = movie.OriginalLanguage,
                     Overview = movie.Overview,
+                    // Add new fields
+                    Runtime = movie.Runtime,
+                    Tagline = movie.Tagline,
+                    VoteAverage = movie.VoteAverage,
+                    ProductionCompany = movie.ProductionCompany,
+                    Director = movie.Director,
                     Genres = movie.Genres.Select(g => g.Id).ToList()
                 };
                 
@@ -246,4 +275,3 @@ namespace backend.Controllers
         }
     }
 }
-

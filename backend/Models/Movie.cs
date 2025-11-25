@@ -17,6 +17,13 @@ namespace backend.Models
         public string OriginalLanguage { get; set; } = "";
         public string Overview { get; set; } = "";
 
+        // --- New Properties ---
+        public int Runtime { get; set; }
+        public string Tagline { get; set; } = "";
+        public double VoteAverage { get; set; }
+        public string ProductionCompany { get; set; } = "";
+        public string Director { get; set; } = "";
+
         // Use ICollection<Genre> for EF Core navigation properties
         public ICollection<Genre> Genres { get; set; } = new List<Genre>();
     }

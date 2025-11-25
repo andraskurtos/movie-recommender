@@ -30,6 +30,7 @@ app.UseSwaggerUI();
 app.UseCors("AllowFrontend");
 
 //app.UseHttpsRedirection();
+app.UseStaticFiles(); // Serve static files
 app.UseAuthorization();
 app.MapControllers();
 
